@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi 解释器源码解析</title>
+    <style>
+        :root {
+            --primary: #0984e3;
+            --bg: #f5f6fa;
+            --card: #ffffff;
+            --text: #2d3436;
+            --code-bg: #2d3436;
+            --code-text: #dfe6e9;
+            --border: #ddd;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1.1rem; }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        h2 {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.3rem;
+            margin: 2rem 0 1rem 0;
+            color: var(--primary);
+        }
+        h3 {
+            margin: 1.2rem 0 0.5rem 0;
+            color: #444;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            margin: 1rem 0;
+        }
+        code {
+            background: #eee;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            text-align: left;
+        }
+        th {
+            background: #e8f0fe;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 700px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+            font-size: 0.9rem;
+        }
+        .diagram {
+            text-align: center;
+            padding: 1rem;
+            font-family: monospace;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🔍 Mochi 解释器源码解析</h1>
+    <p>深入理解动态语言 Mochi 的 C++17 实现</p>
+</header>
+
+<div class="container">
+
+<!-- 概述 -->
+<h2>📌 总体架构</h2>
+<div class="card">
+    <p>Mochi 解释器遵循经典的 <strong>词法分析 → 语法分析 → 字节码执行</strong> 流水线，但由于动态语言特性，它采用 <strong>AST 树遍历解释</strong> 而非编译为字节码。整个系统由以下核心模块组成：</p>
+    <div class="diagram">
+    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+    │  Lexer   │──▶ │  Parser  │──▶ │  AST     │──▶ │Interpreter│
+    │ (词法)   │    │ (语法)   │    │ (抽象树) │    │ (解释器)  │
+    └──────────┘    └──────────┘    └──────────┘    └──────────┘
+                                                          │
+                                                          ▼
+                                                 ┌─────────────────┐
+                                                 │  运行时对象      │
+                                                 │ (MochiClass,    │
+                                                 │  MochiInstance,  │
+                                                 │  MochiFunction,  │
+                                                 │  MochiArray,     │
+                                                 │  MochiDict...)   │
+                                                 └─────────────────┘
+    </div>
+    <p>外加 <strong>Environment</strong> 管理作用域、<strong>NativeFunction</strong> 提供内置功能、<strong>Actor</strong> 并发模型、<strong>FFILibrary</strong> 外部函数接口，以及动态库加载器。</p>
+</div>
+
+<!-- 词法分析 -->
+<h2>📝 词法分析器 (Lexer)</h2>
+<div class="card">
+    <p>词法分析器将源代码字符串转换为 <code>Token</code> 序列。核心枚举 <code>TokenType</code> 包含所有关键字、运算符和字面量类型。关键方法 <code>scanTokens()</code> 逐字符扫描，识别数字、字符串、标识符和注释。</p>
+    <pre><code>enum class TokenType {
+    CLASS, FN, LOC, IF, ELSE, WHILE, FOR, RETURN,
+    SUPER, THIS, TRUE, FALSE, NIL, AND, OR,
+    IN, TRY, CATCH, THROW, BREAK, CONTINUE,
+    IDENTIFIER, NUMBER, STRING,
+    PLUS, MINUS, STAR, SLASH, MOD, BANG, EQUAL, ...
+};
+
+class Lexer {
+    std::string source;
+    size_t start, current;
+    int line;
+    static const std::map&lt;std::string, TokenType&gt; keywords;
+    std::vector&lt;Token&gt; scanTokens();
+};</code></pre>
+    <p>在 <code>scanToken</code> 中，遇到 <code>/</code> 时判断是单行注释、多行注释还是除法；遇到 <code>"</code> 调用 <code>stringLiteral()</code> 处理转义字符；遇到数字则解析浮点数。关键字通过静态 map 识别，如 <code>{"loc", TokenType::LOC}</code>。</p>
+</div>
+
+<!-- 语法分析 -->
+<h2>🏗️ 语法分析器 (Parser)</h2>
+<div class="card">
+    <p>Parser 采用递归下降分析，从 <code>declaration()</code> 开始，根据当前 token 类型分发到 <code>classDeclaration</code>、<code>function</code>、<code>varDeclaration</code> 或 <code>statement</code>。表达式解析采用经典的运算符优先级爬升（Pratt parsing 变体），通过 <code>expression → assignment → orExpr → andExpr → equality ...</code> 逐级下降。</p>
+    <pre><code>class Parser {
+    std::vector&lt;Token&gt; tokens;
+    size_t current;
+
+    StmtPtr declaration();   // 分发到类、函数、变量、语句
+    StmtPtr statement();     // 处理控制流、异常、表达式语句
+    ExprPtr expression();    // 入口，调用 assignment
+    ExprPtr assignment();    // 处理 = 赋值（包括索引赋值）
+    ExprPtr orExpr();        // or 运算符
+    ExprPtr andExpr();       // and 运算符
+    ExprPtr equality();      // == !=
+    ExprPtr comparison();    // > < >= <=
+    ExprPtr addition();      // + -
+    ExprPtr multiplication();// * / %
+    ExprPtr unary();         // ! -
+    ExprPtr call();          // 函数调用、点号访问、索引访问
+    ExprPtr primary();       // 字面量、变量、this、super、fn 表达式、数组、字典
+};</code></pre>
+    <p><strong>表达式 AST 节点</strong> 采用多态设计，每种表达式类型一个结构体，继承自 <code>Expr</code>。例如 <code>Binary</code> 包含左表达式、运算符 token、右表达式。类似地，<code>Stmt</code> 基类下有 <code>IfStmt</code>、<code>WhileStmt</code>、<code>ForStmt</code>、<code>ForInStmt</code>、<code>ReturnStmt</code>、<code>ClassStmt</code> 等。</p>
+    <p>特殊设计：<code>Super</code> 表达式在解析时固定父类方法，在解释时通过环境中的 <code>super</code> 变量找到父类。</p>
+</div>
+
+<!-- AST 结构 -->
+<h2>🌳 AST 节点概览</h2>
+<div class="card">
+    <table>
+        <tr><th>类别</th><th>节点</th><th>说明</th></tr>
+        <tr><td>表达式</td><td>Binary, Unary, Literal, Variable, Assign, Call, Get, Set, Super, This, FunctionExpr, ArrayLiteral, DictLiteral, IndexGet, IndexSet</td><td>覆盖所有表达式</td></tr>
+        <tr><td>语句</td><td>ExpressionStmt, PrintStmt, VarStmt, BlockStmt, IfStmt, WhileStmt, ForStmt, ForInStmt, ReturnStmt, ClassStmt, FunctionStmt, TryStmt, ThrowStmt, BreakStmt, ContinueStmt, EmptyStmt</td><td>控制流与声明</td></tr>
+    </table>
+    <p>所有节点通过 <code>std::unique_ptr</code> 管理，确保内存安全。</p>
+</div>
+
+<!-- 解释器 -->
+<h2>⚡ 解释器 (Interpreter)</h2>
+<div class="card">
+    <p><code>Interpreter</code> 类执行 AST 遍历。它维护一个 <code>Environment</code> 链（用于作用域）和全局环境 <code>globals</code>。核心方法 <code>interpret()</code> 遍历顶层语句列表，调用 <code>execute()</code> 执行每条语句。</p>
+    <pre><code>class Interpreter : public std::enable_shared_from_this&lt;Interpreter&gt; {
+    std::shared_ptr&lt;Environment&gt; globals;
+    std::shared_ptr&lt;Environment&gt; environment;
+    std::map&lt;std::string, Value&gt; modules;
+    std::vector&lt;void*&gt; loadedHandles;
+
+    void interpret(const std::vector&lt;StmtPtr&gt;& statements);
+    void execute(const Stmt& stmt);
+    Value evaluate(const Expr& expr);
+    Value callFunction(std::shared_ptr&lt;MochiFunction&gt; func, const std::vector&lt;Value&gt;& args);
+    std::shared_ptr&lt;MochiFunction&gt; bindFunction(...);
+};</code></pre>
+    <p><strong>表达式求值</strong> 通过 <code>evaluate()</code> 的多态分发实现。例如 <code>Binary</code> 节点会根据运算符执行相应操作，并支持运算符重载（若左操作数是实例且有 <code>__add__</code> 等方法）。<code>Call</code> 节点会提取 callee，若是类则创建实例并调用 <code>init</code>，若是函数则调用 <code>callFunction</code>。</p>
+    <p><strong>return / break / continue</strong> 通过异常实现：抛出 <code>ReturnException</code>、<code>BreakException</code>、<code>ContinueException</code>，在对应循环或函数调用处捕获。</p>
+    <p><strong>错误处理</strong>：<code>throw</code> 语句抛出 <code>ThrowException</code>，<code>try/catch</code> 捕获 <code>ThrowException</code> 和标准 C++ 异常，并将异常值绑定到 catch 变量。</p>
+</div>
+
+<!-- 运行时对象 -->
+<h2>🧩 运行时对象</h2>
+<div class="card">
+    <p>所有值类型为 <code>using Value = std::any</code>，可以存储基础类型、<code>shared_ptr</code> 指向的各类对象。</p>
+    <pre><code>struct MochiFunction {
+    std::string name;
+    std::vector&lt;std::string&gt; params;
+    std::vector&lt;StmtPtr&gt; body;
+    std::shared_ptr&lt;Environment&gt; closure;
+};
+
+struct MochiClass {
+    std::string name;
+    std::shared_ptr&lt;MochiClass&gt; superClass;
+    std::map&lt;std::string, std::shared_ptr&lt;MochiFunction&gt;&gt; methods;
+    std::shared_ptr&lt;MochiFunction&gt; findMethod(const std::string&);
+};
+
+struct MochiInstance {
+    std::shared_ptr&lt;MochiClass&gt; klass;
+    std::map&lt;std::string, Value&gt; fields;
+    std::shared_ptr&lt;Environment&gt; globals; // 用于析构
+};
+
+struct MochiArray { std::vector&lt;Value&gt; elements; };
+struct MochiDict { std::map&lt;std::string, Value&gt; entries; };</code></pre>
+    <p>类继承通过 <code>superClass</code> 指针实现，方法查找沿原型链向上。实例字段存储在 <code>fields</code> 中，方法则从类中查询。为了支持跨线程自动析构，实例保存了全局环境引用，删除器通过临时解释器调用 <code>destroy()</code>。</p>
+</div>
+
+<!-- 内置功能 -->
+<h2>🛠️ 内置函数与标准库</h2>
+<div class="card">
+    <p><code>Interpreter::initBuiltins()</code> 注册全局函数如 <code>print</code>、<code>type</code>、<code>str</code>、<code>num</code>、<code>len</code>、<code>input</code>、<code>error</code>、<code>abs</code>、<code>min</code>、<code>max</code>、<code>random</code>、<code>sleep</code>、<code>clone</code>、<code>range</code> 等。它们都是 <code>NativeFunction</code>，内部通过 lambda 捕获与 C++ 交互。</p>
+    <p><strong>标准库模块</strong> 通过 <code>registerBuiltinModules()</code> 注册，每个模块返回一个 <code>MochiDict</code>。当执行 <code>import("fs")</code> 时，解释器优先查找内置模块表，找到则调用对应的工厂函数返回模块字典并缓存。类似地，<code>math</code>、<code>json</code>、<code>random</code>、<code>string</code>、<code>array</code>、<code>dict</code> 均以此方式实现。</p>
+    <pre><code>builtinModules["fs"] = [this]() -> Value {
+    auto mod = std::make_shared&lt;MochiDict&gt;();
+    // read, write, append, exists, remove, listdir ...
+    return mod;
+};</code></pre>
+    <p>GUI库基于SDL2编写，需要<code>sdl2 2.32.8</code>和<code>sdl2_ttf 2.24.0</code>其余sdl2源代码已涵盖在<code>sources</code>目录内</p>
+</div>
+
+<!-- Actor 并发 -->
+<h2>⚡ Actor 并发模型</h2>
+<div class="card">
+    <p>每个 Actor 拥有独立的 <code>MochiActor</code> 对象和一条消息队列。创建时，<code>spawn</code> 函数构造 <code>MochiActor</code>，启动 <code>std::thread</code> 处理消息循环。消息可以是普通值或 <code>AskContext</code>（用于请求-响应）。<code>reply</code> 函数通过线程局部变量 <code>currentAsk</code> 将结果写回 Future。每个 Actor 线程拥有独立的 <code>Interpreter</code> 实例（共享全局环境），确保线程安全。</p>
+    <pre><code>struct MochiActor {
+    std::function&lt;void(Value)&gt; processMessage;
+    std::queue&lt;Value&gt; mailbox;
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::thread worker;
+    void send(Value msg);
+    std::shared_ptr&lt;MochiFuture&gt; ask(Value payload);
+    void close();
+    void join();
+};</code></pre>
+    <p><code>MochiFuture</code> 通过条件变量阻塞 <code>get()</code>，在 <code>setValue</code> 时通知。Actor 析构时自动 join 线程。</p>
+</div>
+
+<!-- FFI -->
+<h2>🔌 FFI 外部函数接口</h2>
+<div class="card">
+    <p><code>FFILibrary</code> 类维护两个映射表：<code>nativeFuncs</code>（C++ 函数注册）和 <code>exportedFuncs</code>（Mochi 导出函数）。通过 <code>getFFI()</code> 获取实例，调用 <code>add</code> 注册 C++ 函数。在 Mochi 中通过 <code>ffi.call("name", ...)</code> 调用，<code>ffi.export("name", func)</code> 导出。</p>
+    <pre><code>class FFILibrary {
+    std::map&lt;std::string, std::function&lt;Value(Interpreter*, const std::vector&lt;Value&gt;&)&gt;&gt; nativeFuncs;
+    std::map&lt;std::string, std::shared_ptr&lt;MochiFunction&gt;&gt; exportedFuncs;
+    void add(const std::string& name, auto func);
+    Value call(const std::string& name, const std::vector&lt;Value&gt;& args);
+    void exportFunc(const std::string& name, std::shared_ptr&lt;MochiFunction&gt;);
+    Value callMochi(const std::string& name, const std::vector&lt;Value&gt;& args);
+};</code></pre>
+</div>
+
+<!-- 动态库加载 -->
+<h2>📦 动态库模块加载</h2>
+<div class="card">
+    <p><code>import("name.mochimod")</code> 通过 <code>dlopen</code>/<code>LoadLibrary</code> 加载动态库，并调用 <code>mochi_module_init</code> 获取模块字典。第三方开发者只需包含 <code>mochi_api.h</code>，实现该函数即可。解释器在 <code>loadedHandles</code> 中保存句柄，但不手动卸载，由操作系统在进程退出时回收。</p>
+    <pre><code>// 第三方模块示例
+extern "C" Value mochi_module_init(Interpreter* interp) {
+    auto mod = makeDict();
+    // 注册函数...
+    return mod;
+}</code></pre>
+</div>
+
+<!-- 环境管理 -->
+<h2>🌐 环境与作用域</h2>
+<div class="card">
+    <p><code>Environment</code> 类维护符号表 <code>values</code> 和指向外层环境的指针 <code>enclosing</code>。变量查找沿链递归。每个函数调用创建新环境，从而实现闭包。内置函数和全局变量存储在 <code>globals</code> 中，作为所有作用域的根。</p>
+</div>
+
+<!-- 总结 -->
+<h2>📖 总结</h2>
+<div class="card">
+    <p>Mochi 解释器展示了如何用C++17 代码构建一门功能丰富的动态语言。其设计强调可扩展性：内置模块、FFI、动态库加载使语言能力不受限。Actor 模型赋予原生的并发支持，而自动析构和深拷贝则提升了易用性。</p>
+    <p>这份文档仅概述核心思路，完整的实现细节请参考 <code>Mochi</code> 源码。希望它能帮助你快速掌握 Mochi 的内部世界，并为你的二次开发或第三方扩展提供指引。</p>
+</div>
+
+</div>
+
+<footer>
+    Mochi Language Internals &copy; 2026
+</footer>
+
+</body>
+</html>

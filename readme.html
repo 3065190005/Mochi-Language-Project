@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi 语言 v3.4 开发手册</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #2d3436;
+            --code-bg: #2d3436;
+            --code-text: #dfe6e9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1.1rem; }
+        .mascot {
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .mascot img {
+            max-width: 200px;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        h2 {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.3rem;
+            margin: 2rem 0 1rem 0;
+            color: var(--primary);
+        }
+        h3 {
+            margin: 1.2rem 0 0.5rem 0;
+            color: #444;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+        code {
+            background: #eee;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.6rem 1rem;
+            text-align: left;
+        }
+        th {
+            background: #f0ebff;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 700px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🍡 Mochi 语言 v3.4</h1>
+    <p>动态、异步、可嵌入的解释型编程语言 · 全新 GUI 系统</p>
+</header>
+
+<div class="mascot">
+    <img src="mochi_pet.png" alt="Mochi 宠物吉祥物">
+</div>
+
+<div class="container">
+
+    <!-- ==================== 概述 ==================== -->
+    <h2>📘 语言概览</h2>
+    <div class="card">
+        <p>Mochi 3.4 是一款现代化动态脚本语言，拥有类与继承、原生并发 Actor 模型、丰富的数据结构、运算符重载以及强大的 FFI。本版本新增 <b>扁平化 GUI 系统</b>，支持窗口、按钮、文本框（含密码模式）、滑块、进度条、多行编辑器等控件，所有界面更新线程安全。关键字 <code>loc</code> 用于声明局部变量。</p>
+        <table>
+            <tr><th>特性</th><th>说明</th></tr>
+            <tr><td>类与单继承</td><td>class / super / this / 动态方法 / 自动析构</td></tr>
+            <tr><td>变量声明</td><td>loc name = value;</td></tr>
+            <tr><td>数据结构</td><td>数组 [] / 字典 {} / 字符串索引与转义</td></tr>
+            <tr><td>函数与闭包</td><td>fn 关键字，一等公民，环境捕获</td></tr>
+            <tr><td>控制流</td><td>if / while / for / for-in / break / continue</td></tr>
+            <tr><td>运算符</td><td>+ - * / % 及全部比较运算符，支持重载</td></tr>
+            <tr><td>错误处理</td><td>throw / try-catch / error()</td></tr>
+            <tr><td>模块系统</td><td>import("name") 内置 / "file.mochi" 脚本 / "lib.mochimod" 动态库</td></tr>
+            <tr><td>迭代器协议</td><td>for-in 支持 range()、数组、字典、自定义 iter()</td></tr>
+            <tr><td>并发模型</td><td>spawn / send / ask / reply / Future / close / join</td></tr>
+            <tr><td>运算符重载</td><td>__add__, __mod__, __getitem__ 等特殊方法</td></tr>
+            <tr><td>深拷贝</td><td>clone() 与 __clone__ 协议</td></tr>
+            <tr><td>FFI</td><td>双向调用 C++ 函数与 Mochi 对象</td></tr>
+            <tr><td>GUI 系统</td><td>窗口、按钮、文本框、滑块、进度条、多行编辑器等，线程安全</td></tr>
+            <tr><td>REPL</td><td>交互式环境，支持多行与状态保持</td></tr>
+        </table>
+    </div>
+
+    <!-- ==================== 快速开始 ==================== -->
+    <h2>🚀 快速开始</h2>
+    <div class="card">
+        <h3>运行脚本</h3>
+        <pre><code>$ ./mochi my_script.mochi</code></pre>
+        <h3>REPL 交互</h3>
+        <pre><code>$ ./mochi
+Mochi v3.4 REPL
+> loc x = 10;
+> print(x * 2);
+20</code></pre>
+    </div>
+
+    <!-- ==================== 类型与字面量 ==================== -->
+    <h2>🔢 类型与字面量</h2>
+    <div class="card">
+        <div class="grid-2">
+            <div>
+                <h3>基础类型</h3>
+                <ul>
+                    <li><b>nil</b> – 空值</li>
+                    <li><b>bool</b> – true / false</li>
+                    <li><b>number</b> – 双精度浮点（如 3.14）</li>
+                    <li><b>string</b> – 双引号，支持转义（\n, \t, \\, \", \0）</li>
+                </ul>
+            </div>
+            <div>
+                <h3>复合类型</h3>
+                <ul>
+                    <li><b>array</b> – [1, 2, 3]</li>
+                    <li><b>dict</b> – {"key": value, ...}</li>
+                    <li><b>function</b> – fn() { ... }</li>
+                    <li><b>class</b> – 自定义类</li>
+                    <li><b>instance</b> – 类的实例</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 控制流 ==================== -->
+    <h2>🔄 控制流</h2>
+    <div class="card">
+        <pre><code>// 条件
+if (x > 10) {
+    print("big");
+} else {
+    print("small");
+}
+
+// while 循环
+loc i = 0;
+while (i < 3) {
+    print(i);
+    i = i + 1;
+}
+
+// for 循环
+for (loc j = 0; j < 5; j = j + 1) {
+    if (j == 2) continue;
+    if (j == 4) break;
+    print(j);
+}
+
+// for-in + range
+for (loc n in range(0, 5)) {
+    print(n);   // 0 1 2 3 4
+}
+
+// 数组迭代
+for (loc item in [10, 20, 30]) {
+    print(item);
+}</code></pre>
+    </div>
+
+    <!-- ==================== 类与继承 ==================== -->
+    <h2>🧬 类与继承</h2>
+    <div class="card">
+        <pre><code>class Animal {
+    init(name) { this.name = name; }
+    speak() { print(this.name + " makes a sound."); }
+}
+
+class Dog : Animal {
+    init(name, breed) { super.init(name); this.breed = breed; }
+    speak() { print(this.name + " barks!"); }
+}
+
+loc d = Dog("Buddy", "Golden");
+d.speak();  // Buddy barks!</code></pre>
+        <p>动态方法与自动析构：</p>
+        <pre><code>d.wag_tail = fn() { print(this.name + " wags."); };
+d.wag_tail();
+
+class Resource {
+    init(name) { this.name = name; print("Create " + name); }
+    destroy() { print("Destroy " + this.name); }
+}
+{
+    loc r = Resource("obj"); // 离开作用域自动调用 destroy
+}</code></pre>
+    </div>
+
+    <!-- ==================== 运算符重载 ==================== -->
+    <h2>⚙️ 运算符重载</h2>
+    <div class="card">
+        <table>
+            <tr><th>运算符</th><th>方法</th><th>运算符</th><th>方法</th></tr>
+            <tr><td>+</td><td>__add__</td><td>-</td><td>__sub__</td></tr>
+            <tr><td>*</td><td>__mul__</td><td>/</td><td>__div__</td></tr>
+            <tr><td>%</td><td>__mod__</td><td></td><td></td></tr>
+            <tr><td>==</td><td>__eq__</td><td>!=</td><td>__ne__</td></tr>
+            <tr><td>&lt;</td><td>__lt__</td><td>&gt;</td><td>__gt__</td></tr>
+            <tr><td>&lt;=</td><td>__le__</td><td>&gt;=</td><td>__ge__</td></tr>
+            <tr><td>-x</td><td>__neg__</td><td>!x</td><td>__not__</td></tr>
+            <tr><td>obj[idx]</td><td>__getitem__</td><td>obj[idx]=v</td><td>__setitem__</td></tr>
+        </table>
+        <pre><code>class Vector {
+    init(x, y) { this.x = x; this.y = y; }
+    __add__(v) { return Vector(this.x + v.x, this.y + v.y); }
+    __str__()  { return "(" + this.x + ", " + this.y + ")"; }
+}
+loc v = Vector(1,2) + Vector(3,4);
+print(v);  // (4, 6)</code></pre>
+    </div>
+
+    <!-- ==================== 深拷贝 ==================== -->
+    <h2>📋 深拷贝</h2>
+    <div class="card">
+        <pre><code>loc a = [1,2,[3,4]];
+loc b = clone(a);
+b[2][0] = 99;
+print(a[2][0]); // 3 (不受影响)</code></pre>
+    </div>
+
+    <!-- ==================== 异常处理 ==================== -->
+    <h2>⚠️ 异常处理</h2>
+    <div class="card">
+        <pre><code>try { throw "error!"; } catch (e) { print(e); }
+try { error("fail"); } catch (e) { print(e); }</code></pre>
+    </div>
+
+    <!-- ==================== 模块系统 ==================== -->
+    <h2>📦 模块系统</h2>
+    <div class="card">
+        <ul>
+            <li><b>内置模块</b>：直接写名称，如 <code>import("fs")</code></li>
+            <li><b>脚本文件</b>：需加 <code>.mochi</code> 后缀，如 <code>import("myutils.mochi")</code></li>
+            <li><b>动态库</b>：后缀 <code>.mochimod</code>，如 <code>import("mylib.mochimod")</code></li>
+        </ul>
+    </div>
+
+    <!-- ==================== 并发 Actor 模型 ==================== -->
+    <h2>⚡ Actor 并发模型</h2>
+    <div class="card">
+        <pre><code>loc worker = spawn(fn(msg) {
+    reply("Result: " + msg);
+});
+loc future = worker.ask("query");
+print(future.get());   // Result: query
+worker.close(); worker.join();</code></pre>
+    </div>
+
+    <!-- ==================== FFI ==================== -->
+    <h2>🔌 FFI 外部函数接口</h2>
+    <div class="card">
+        <pre><code>// C++ 侧注册
+ffi->add("add", [](Interpreter*, auto& args) {
+    return Value(std::any_cast<double>(args[0]) + std::any_cast<double>(args[1]));
+});
+// Mochi 侧
+loc sum = ffi.call("add", 3, 4);   // 7</code></pre>
+    </div>
+
+    <!-- ==================== GUI 系统 ==================== -->
+    <h2>🖼️ GUI 图形界面（v3.4 新增）</h2>
+    <div class="card">
+        <p>基于 SDL2 的扁平化 GUI 库，使用 <code>import("gui")</code> 加载。所有界面操作入队主线程，可在 Actor 中安全调用。</p>
+        <h3>基础控件</h3>
+        <pre><code>loc gui = import("gui");
+loc win = gui.createWindow("My App", 400, 300);
+loc layer = gui.addLayer(win, "main");
+
+loc btn = gui.addButton(layer, "btn", "Click me", 100, 100, 120, 40, fn() {
+    print("Clicked!");
+});
+gui.addLabel(layer, "title", "Hello GUI", 50, 30);
+gui.run();</code></pre>
+        <h3>可用控件</h3>
+        <table>
+            <tr><th>方法</th><th>说明</th></tr>
+            <tr><td>createWindow(title, w, h, style?)</td><td>创建窗口</td></tr>
+            <tr><td>addLayer(win, name)</td><td>添加层</td></tr>
+            <tr><td>addButton(layer, name, text, x, y, w, h, cb?)</td><td>按钮</td></tr>
+            <tr><td>addLabel(layer, name, text, x, y)</td><td>标签</td></tr>
+            <tr><td>addTextField(layer, name, text, x, y, w, h, onChange?)</td><td>文本框</td></tr>
+            <tr><td>addCheckBox(layer, name, text, x, y, w, cb?)</td><td>复选框</td></tr>
+            <tr><td>addSlider(layer, name, min, max, step, x, y, w, cb?)</td><td>滑动条</td></tr>
+            <tr><td>addProgressBar(layer, name, x, y, w)</td><td>进度条</td></tr>
+            <tr><td>addMemo(layer, name, x, y, w, h)</td><td>多行文本框</td></tr>
+            <tr><td>addHLayout(layer, name, x, y, w, h)</td><td>水平布局容器</td></tr>
+            <tr><td>addVLayout(layer, name, x, y, w, h)</td><td>垂直布局容器</td></tr>
+            <tr><td>setText(ctrl, text)</td><td>设置控件文本</td></tr>
+            <tr><td>setValue(ctrl, value)</td><td>设置进度条/滑块值</td></tr>
+            <tr><td>setPassword(ctrl, bool)</td><td>设置密码模式</td></tr>
+            <tr><td>setEnabled(ctrl, bool)</td><td>启用/禁用控件</td></tr>
+            <tr><td>setVisible(ctrl, bool)</td><td>显示/隐藏控件</td></tr>
+            <tr><td>setCallback(ctrl, fn)</td><td>动态设置回调</td></tr>
+            <tr><td>setFocus(ctrl)</td><td>聚焦控件</td></tr>
+            <tr><td>getText(ctrl)</td><td>获取控件文本</td></tr>
+            <tr><td>getValue(ctrl)</td><td>获取滑动条/进度条值</td></tr>
+            <tr><td>isChecked(ctrl)</td><td>获取复选框状态</td></tr>
+            <tr><td>quit()</td><td>退出事件循环</td></tr>
+        </table>
+        <p>📝 <b>示例：登录框</b></p>
+        <pre><code>
+    loc gui = import("gui");
+
+    loc win = gui.createWindow("布局系统演示",560, 480, 4);
+    loc layer = gui.addLayer(win, "main");
+
+    // 垂直布局（左侧面板）—— 高度充足，控件不会溢出
+    loc vbox = gui.addVLayout(layer, "leftPanel", 15, 15, 180, 410);
+    vbox.setSpacing(6);
+    vbox.setPadding(10);
+
+    vbox.addLabel("用户信息");
+    vbox.addTextField("用户名", 150, 28);
+    vbox.addTextField("密码", 150, 28);
+    vbox.addCheckBox("自动登录", 140);
+    vbox.addButton("登录", 140, 32);
+    vbox.addSlider(0, 100, 1, 150);
+
+    // 水平工具栏
+    loc hbox = gui.addHLayout(layer, "topBar", 210, 15, 320, 40);
+    hbox.setSpacing(10);
+    hbox.addLabel("编辑工具");
+    hbox.addButton("剪切", 65, 28);
+    hbox.addButton("复制", 65, 28);
+    hbox.addButton("粘贴", 65, 28);
+
+    // 多行编辑区
+    loc memo = gui.addMemo(layer, "editor", 210, 70, 320, 310);
+    gui.setMemoText(memo, "这是 Mochi GUI 布局示例。\n你可以在这里编辑文本。");
+
+    // 底部按钮
+    gui.addButton(layer, "saveBtn", "保存内容", 15, 440, 120, 32, fn() {
+    loc text = gui.getMemoText(memo);
+    print("保存的文本: " + text);
+    });
+    gui.addButton(layer, "quitBtn", "退出", 430, 440, 120, 32, fn() {
+    gui.quit();
+    });
+
+    gui.run();
+</code></pre>
+        <p>所有 GUI 操作均通过 <code>import("gui")</code> 模块完成。控件采用搭积木风格，布局和样式自动处理。详细请看<code>mochi_gui.html</code></p>
+        <h3>可用窗口样式</h3>
+        <table>
+            <tr><th>窗口样式代码</th><th>功能</th></tr>
+            <tr><td> 0x00000001   </td><td>全屏窗口</td></tr>
+            <tr><td> 0x00000004   </td><td>窗口可见</td></tr>
+            <tr><td> 0x00000008   </td><td>窗口不可见</td></tr>
+            <tr><td> 0x00000010   </td><td>无窗口装饰</td></tr>
+            <tr><td> 0x00000020   </td><td>窗口可调整大小</td></tr>
+            <tr><td> 0x00000040   </td><td>窗口最小化</td></tr>
+            <tr><td> 0x00000080   </td><td>窗口最大化</td></tr>
+            <tr><td> 0x00001001   </td><td>全屏桌面窗口</td></tr>
+            <tr><td> 0x00008000   </td><td>窗口应始终置顶</td></tr>
+            <tr><td> 0x00010000   </td><td>窗口不添加到任务栏</td></tr>
+            <tr><td> 0x00020000   </td><td>窗口视为工具窗口</td></tr>
+            <tr><td> 0x00040000   </td><td>窗口视为工具提示</td></tr>
+            <tr><td> 0x00080000   </td><td>窗口视为弹出菜单</td></tr>
+        </table>
+        <p>
+    </div>
+
+    <!-- ==================== 内置函数 ==================== -->
+    <h2>🛠️ 内置函数快速参考</h2>
+    <div class="card">
+        <table>
+            <tr><th>函数</th><th>功能</th></tr>
+            <tr><td>print(...)</td><td>打印，遇实例调用 __str__</td></tr>
+            <tr><td>type(v)</td><td>返回类型字符串</td></tr>
+            <tr><td>str(v)</td><td>转为字符串</td></tr>
+            <tr><td>num(v)</td><td>转为数字</td></tr>
+            <tr><td>len(v)</td><td>返回长度</td></tr>
+            <tr><td>input(prompt)</td><td>读取一行输入</td></tr>
+            <tr><td>error(msg)</td><td>抛出运行时错误</td></tr>
+            <tr><td>abs(x)</td><td>绝对值</td></tr>
+            <tr><td>min(a,b), max(a,b)</td><td>最小值/最大值</td></tr>
+            <tr><td>random()</td><td>返回 [0,1) 随机数</td></tr>
+            <tr><td>sleep(seconds)</td><td>暂停当前线程</td></tr>
+            <tr><td>clone(v)</td><td>深拷贝</td></tr>
+            <tr><td>range(start,stop,step?)</td><td>生成可迭代数字序列</td></tr>
+        </table>
+    </div>
+
+    <!-- ==================== 标准库概览 ==================== -->
+    <h2>📚 标准库概览</h2>
+    <div class="card">
+
+        <div class="grid-2">
+            <div>
+                <h3>fs - 文件系统</h3>
+                <ul><li>read/write/append</li><li>exists/remove</li><li>listdir</li></ul>
+            </div>
+            <div>
+                <h3>math - 数学扩展</h3>
+                <ul><li>pi, e, sin, cos, tan</li><li>sqrt, pow, log, log10</li><li>floor, ceil, round</li></ul>
+            </div>
+            <div>
+                <h3>json - JSON 支持</h3>
+                <ul><li>encode / decode</li></ul>
+            </div>
+            <div>
+                <h3>random - 随机工具</h3>
+                <ul><li>seed / random / uniform</li><li>randint / choice</li><li>shuffle / sample / bytes</li></ul>
+            </div>
+            <div>
+                <h3>string - 字符串工具</h3>
+                <ul><li>split / join / trim</li><li>startsWith / endsWith</li><li>upper / lower / replace / repeat</li></ul>
+            </div>
+            <div>
+                <h3>array - 数组高级操作</h3>
+                <ul><li>map / filter / filterInPlace / reduce</li><li>find / every / some / sort</li><li>reverse / copy / flatten</li></ul>
+            </div>
+            <div>
+                <h3>dict - 字典工具</h3>
+                <ul><li>keys / values / entries / merge</li><li>get / set / has / remove / clear / items</li></ul>
+            </div>
+            <div>
+                <h3>utf - Unicode 支持</h3>
+                <ul><li>len / sub / charAt / codes</li></ul>
+            </div>
+            <div>
+                <h3>dir - 目录操作</h3>
+                <ul><li>mkdir / rmdir / isdir</li><li>cwd / chdir / walk</li></ul>
+            </div>
+            <div>
+                <h3>socket - 网络通信 (v3.4)</h3>
+                <ul><li>tcp / udp / select</li><li>bind / listen / accept</li><li>connect / send / recv</li><li>close / handle</li></ul>
+            </div>
+            <div>
+                <h3>pack - 二进制打包与位运算 (v3.4)</h3>
+                <ul><li>pack / unpack</li><li>bitand / bitor / bitnot / bitxor</li><li>lshift / rshift / arshift</li><li>hex / oct / bin 进制转换</li></ul>
+            </div>
+            <div>
+                <h3>gui - 图形界面 (v3.4)</h3>
+                <ul><li>窗口、按钮、文本框</li><li>滑块、进度条、多行编辑器</li><li>线程安全，搭积木风格</li></ul>
+            </div>
+        </div>
+    </div>
+
+    <p style="font-size:0.9rem; color:#666;">详细内容请看<code>mochi_std_library.html</code></p>
+
+    <!-- ==================== 第三方动态库 ==================== -->
+    <h2>🧩 第三方动态库（.mochimod）</h2>
+    <div class="card">
+        <p>使用 C++ 编写模块并编译为动态库，Mochi 可通过 import 加载。需实现 <code>extern "C" Value mochi_module_init(Interpreter*)</code>。提供 <code>mochi_api.h</code> 头文件。</p>
+        <pre><code>// 编译：g++ -std=c++17 -fPIC -shared hello_module.cpp -o hello.mochimod
+// Mochi：loc hello = import("hello.mochimod");</code></pre>
+    </div>
+
+    <!-- ==================== 结束 ==================== -->
+    <div class="card" style="text-align:center; margin-top:2rem;">
+        <p>✨ Mochi 3.4 —— 动态、并发、图形化，全部由你创造。</p>
+        <p style="font-size:0.9rem; color:#666;">手册对应版本 v3.4</p>
+    </div>
+
+</div>
+<footer>
+    &copy; 2026 Mochi Language Project. All rights reserved.
+</footer>
+
+</body>
+</html>

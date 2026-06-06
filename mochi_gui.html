@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi GUI 编程指南</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #2d3436;
+            --code-bg: #2d3436;
+            --code-text: #dfe6e9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1.1rem; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 1rem; }
+        h2 {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 0.3rem;
+            margin: 2rem 0 1rem 0;
+            color: var(--primary);
+        }
+        h3 { margin: 1.2rem 0 0.5rem 0; color: #444; }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+        code {
+            background: #eee;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre code { background: transparent; padding: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.6rem 1rem;
+            text-align: left;
+        }
+        th { background: #f0ebff; }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 700px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        footer { text-align: center; padding: 2rem; color: #888; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🖼️ Mochi GUI 编程指南</h1>
+    <p>扁平化 · 搭积木 · 线程安全</p>
+</header>
+
+<div class="container">
+
+<!-- ==================== 概述 ==================== -->
+<h2>1. 概述</h2>
+<div class="card">
+    <p>Mochi GUI 是内置于 Mochi 语言的图形界面库，基于 SDL2 和 SDL2_ttf，采用扁平化设计。它让您以“搭积木”的方式快速构建窗口、按钮、文本框、滑块、进度条、多行编辑器等界面组件。所有界面更新均在主线程安全执行，可无缝配合 Actor 并发模型。</p>
+    <p>使用 <code>import("gui")</code> 加载模块，无需额外安装脚本包。</p>
+</div>
+
+<!-- ==================== 环境准备 ==================== -->
+<h2>2. 环境准备</h2>
+<div class="card">
+    <h3>安装依赖</h3>
+    <p>Mochi GUI 需要 <b>SDL2</b>、<b>SDL2_ttf</b> 和 <b>SDL2_gfx</b> 开发库。</p>
+    <ul>
+        <li><b>Linux (Ubuntu/Debian)</b>:
+            <pre><code>sudo apt install libsdl2-dev libsdl2-ttf-dev libsdl2-gfx-dev</code></pre>
+        </li>
+        <li><b>macOS (Homebrew)</b>:
+            <pre><code>brew install sdl2 sdl2_ttf sdl2_gfx</code></pre>
+        </li>
+        <li><b>Windows</b>: 推荐使用 vcpkg
+            <pre><code>vcpkg install sdl2 sdl2-ttf sdl2-gfx</code></pre>
+            或下载预编译的 `.lib` / `.dll` 文件。
+        </li>
+    </ul>
+    <h3>编译 Mochi 解释器</h3>
+    <p>在包含 GUI 模块的源码中，链接这些库：</p>
+    <pre><code>g++ -std=c++17 -rdynamic -o mochi mochi.cpp -ldl -pthread -lSDL2 -lSDL2_ttf -lSDL2_gfx</code></pre>
+    <p>确保 <code>mochi.cpp</code> 中已包含 GUI 模块的注册代码。</p>
+</div>
+
+<!-- ==================== 基本概念 ==================== -->
+<h2>3. 基本概念</h2>
+<div class="card">
+    <h3>窗口 (Window)</h3>
+    <p>所有界面的根容器。通过 <code>gui.createWindow(title, width, height, style?)</code> 创建。</p>
+
+    <h3>层 (Layer)</h3>
+    <p>窗口内可以添加多个层，用于组织控件。目前每个层独立，不影响渲染顺序（控件的 z 序与添加顺序一致）。</p>
+
+    <h3>控件 (Widget)</h3>
+    <p>按钮、标签、文本框、复选框、滑块、进度条、多行编辑器统称为控件。每个控件都有唯一的名称（name），通过 API 返回的代理对象访问。</p>
+
+    <h3>代理对象 (Proxy)</h3>
+    <p>创建控件后返回一个字典对象（代理），内含控件的内部 ID。所有操作（如 <code>setText</code>）都需要传入这个代理对象。</p>
+
+    <h3>线程模型</h3>
+    <p>所有 GUI 的实际绘制和事件处理都在 <code>gui.run()</code> 的主循环中执行。您在任意线程（包括 Actor）中调用 <code>setText</code> 等函数时，操作会被安全地投递到主线程执行，无需手动加锁。</p>
+</div>
+
+<!-- ==================== 你的第一个 GUI 程序 ==================== -->
+<h2>4. 快速入门</h2>
+<div class="card">
+    <pre><code>loc gui = import("gui");
+
+loc win = gui.createWindow("Hello GUI", 400, 300);
+loc layer = gui.addLayer(win, "main");
+
+loc btn = gui.addButton(layer, "btn1", "点我", 120, 100, 100, 40, fn() {
+    print("按钮被点击！");
+});
+
+gui.run();   // 进入事件循环，程序阻塞于此</code></pre>
+    <p>运行后会出现一个 400x300 的窗口，中间有一个蓝色圆角按钮，点击后控制台输出信息。点击窗口关闭按钮或调用 <code>gui.quit()</code> 可退出循环。</p>
+</div>
+
+<!-- ==================== 控件详解 ==================== -->
+<h2>5. 控件详解</h2>
+<div class="card">
+    <h3>5.1 按钮 (Button)</h3>
+    <pre><code>gui.addButton(layer, name, text, x, y, w, h, callback?)</code></pre>
+    <p>创建一个带文本的按钮。回调函数接收 0 个参数。</p>
+
+    <h3>5.2 标签 (Label)</h3>
+    <pre><code>gui.addLabel(layer, name, text, x, y)</code></pre>
+    <p>显示静态文本。宽度自动根据文字调整，高度固定 22px。</p>
+
+    <h3>5.3 文本框 (TextField)</h3>
+    <pre><code>gui.addTextField(layer, name, text, x, y, w, h, onChange?)</code></pre>
+    <p>单行文本输入框。支持鼠标点击定位、方向键、退格/删除、Home/End。可选 <code>onChange</code> 回调，每次文本变化时调用，传递当前文本字符串。</p>
+    <p><b>密码模式</b>：<code>gui.setPassword(tf, true)</code> 可使输入显示为星号。</p>
+
+    <h3>5.4 复选框 (CheckBox)</h3>
+    <pre><code>gui.addCheckBox(layer, name, text, x, y, w, callback?)</code></pre>
+    <p>勾选框与文字标签的组合。回调函数接收一个布尔值参数表示当前状态。</p>
+
+    <h3>5.5 滑动条 (Slider)</h3>
+    <pre><code>gui.addSlider(layer, name, min, max, step, x, y, w, callback?)</code></pre>
+    <p>圆形滑块浮于轨道上。回调接收当前数值。可通过 <code>gui.setValue(slider, 50)</code> 动态设置。</p>
+
+    <h3>5.6 进度条 (ProgressBar)</h3>
+    <pre><code>gui.addProgressBar(layer, name, x, y, w)</code></pre>
+    <p>矩形进度条，默认范围 0~100。使用 <code>gui.setValue(bar, 70)</code> 更新，<code>gui.setProgressRange(bar, min, max)</code> 自定义范围。</p>
+
+    <h3>5.7 多行文本框 (Memo)</h3>
+    <pre><code>gui.addMemo(layer, name, x, y, w, h)</code></pre>
+    <p>功能类似记事本，支持键盘编辑、滚动、鼠标点击定位。通过 <code>gui.getMemoText(memo)</code> 和 <code>gui.setMemoText(memo, text)</code> 读写全部内容。</p>
+
+    <h3>5.8 通用方法</h3>
+    <table>
+        <tr><th>方法</th><th>说明</th></tr>
+        <tr><td><code>gui.setText(ctrl, text)</code></td><td>设置控件文本（按钮、标签、文本框等）</td></tr>
+        <tr><td><code>gui.getValue(ctrl)</code></td><td>获取滑动条/进度条的数值</td></tr>
+        <tr><td><code>gui.getText(ctrl)</code></td><td>获取文本框/按钮/标签的文本</td></tr>
+        <tr><td><code>gui.isChecked(ctrl)</code></td><td>获取复选框是否选中</td></tr>
+        <tr><td><code>gui.setEnabled(ctrl, bool)</code></td><td>启用/禁用控件（变灰并忽略事件）</td></tr>
+        <tr><td><code>gui.setVisible(ctrl, bool)</code></td><td>显示/隐藏控件</td></tr>
+        <tr><td><code>gui.setCallback(ctrl, fn)</code></td><td>动态设置按钮或滑块回调</td></tr>
+        <tr><td><code>gui.setFocus(ctrl)</code></td><td>将输入焦点移至文本框或 Memo</td></tr>
+        <tr><td><code>gui.setPassword(ctrl, bool)</code></td><td>切换文本框密码模式</td></tr>
+        <tr><td><code>gui.setProgressRange(ctrl, min, max)</code></td><td>设置进度条的最小/最大值</td></tr>
+        <tr><td><code>gui.quit()</code></td><td>退出事件循环，关闭窗口</td></tr>
+    </table>
+</div>
+
+<!-- ==================== 布局系统 ==================== -->
+<h2>6. 布局系统</h2>
+<div class="card">
+    <p>使用水平布局 (HLayout) 和垂直布局 (VLayout) 可以自动排列控件，无需手动计算坐标。</p>
+
+    <h3>创建布局</h3>
+    <pre><code>loc hbox = gui.addHLayout(layer, "hbox1", x, y, w, h);
+loc vbox = gui.addVLayout(layer, "vbox1", x, y, w, h);</code></pre>
+
+    <h3>布局属性</h3>
+    <ul>
+        <li><code>layout.setSpacing(n)</code> – 设置子控件之间的间距（默认 6px）</li>
+        <li><code>layout.setPadding(n)</code> – 设置容器内边距（默认 8px）</li>
+    </ul>
+
+    <h3>向布局添加控件</h3>
+    <p>布局代理提供的方法**省略了 layer, name, x, y 参数**，其他参数与全局函数一致：</p>
+    <table>
+        <tr><th>方法</th><th>参数</th></tr>
+        <tr><td><code>hbox.addLabel(text)</code></td><td>文本</td></tr>
+        <tr><td><code>hbox.addButton(text, w, h, callback?)</code></td><td>文本、宽度、高度、可选回调</td></tr>
+        <tr><td><code>hbox.addTextField(text, w, h, onChange?)</code></td><td>初始文本、宽度、高度、可选回调</td></tr>
+        <tr><td><code>hbox.addCheckBox(text, w, callback?)</code></td><td>标签、宽度、可选回调</td></tr>
+        <tr><td><code>hbox.addSlider(min, max, step, w, callback?)</code></td><td>最小值、最大值、步长、宽度、可选回调</td></tr>
+        <tr><td><code>hbox.addProgressBar(w)</code></td><td>宽度</td></tr>
+        <tr><td><code>hbox.addMemo(w, h)</code></td><td>宽度、高度</td></tr>
+    </table>
+
+    <h3>完整示例</h3>
+    <pre><code>loc gui = import("gui");
+loc win = gui.createWindow("布局示例", 600, 400);
+loc layer = gui.addLayer(win, "main");
+
+loc vbox = gui.addVLayout(layer, "vbox", 10, 10, 200, 380);
+vbox.setSpacing(8);
+vbox.addLabel("用户登录");
+vbox.addTextField("用户名", 160, 28);
+vbox.addTextField("密码", 160, 28);
+vbox.addCheckBox("记住我", 160);
+vbox.addButton("登录", 160, 36, fn() { print("登录..."); });
+
+loc memo = gui.addMemo(layer, "editor", 220, 10, 360, 380);
+gui.run();</code></pre>
+
+    <p>控件自动垂直排列，完美对齐。</p>
+</div>
+
+<!-- ==================== 线程安全与 Actor ==================== -->
+<h2>7. 线程安全与 Actor</h2>
+<div class="card">
+    <p>GUI 的所有实际更新都在主线程（事件循环）中执行。您可以在任意线程中调用 GUI 函数，它们会将操作推入任务队列，在下一帧处理。</p>
+    <p>结合 Actor 模型，可以轻松实现后台任务更新界面。</p>
+
+    <pre><code>loc gui = import("gui");
+loc win = gui.createWindow("Actor 更新界面", 300, 200);
+loc layer = gui.addLayer(win, "main");
+loc prog = gui.addProgressBar(layer, "bar", 50, 80, 200);
+
+loc worker = spawn(fn(_) {
+    loc i = 0;
+    while (i <= 100) {
+        gui.setValue(prog, i);   // 安全！会自动投递到主线程
+        sleep(0.02);
+        i = i + 1;
+    }
+});
+worker.send("go");
+
+gui.run();</code></pre>
+    <p>Actor 线程中连续更新进度条，界面流畅无卡顿，完全线程安全。</p>
+</div>
+
+<!-- ==================== 常见问题 ==================== -->
+<h2>8. 常见问题</h2>
+<div class="card">
+    <p><b>Q: 中文显示为方框</b><br>
+    A: 检查字体路径。确保 <code>initGUIFont()</code> 中加载了中文字体（如文泉驿、微软雅黑）。可在全局变量 <code>g_font</code> 初始化时指定系统存在的中文字体路径。</p>
+
+    <p><b>Q: 控件重叠</b><br>
+    A: 如果使用布局，确保布局容器高度足够，且子控件的高度属性不为 0。标签高度至少 22，文本框/按钮必须传入高度参数。若手动布局，检查坐标是否冲突。</p>
+
+    <p><b>Q: 按钮回调中调用 <code>return</code> 会崩溃？</b><br>
+    A: 不会。Mochi 的 <code>ReturnException</code> 已被 GUI 主循环安全捕获，可以正常使用 <code>return</code> 提前退出回调。</p>
+
+    <p><b>Q: 如何关闭窗口并继续执行脚本？</b><br>
+    A: 调用 <code>gui.quit()</code> 会退出事件循环，<code>gui.run()</code> 返回后继续执行后续代码。</p>
+</div>
+
+<!-- ==================== 结语 ==================== -->
+<div class="card" style="text-align:center; margin-top:2rem;">
+    <p>✨ Mochi GUI 让脚本语言拥有现代图形界面，简单又强大。</p>
+    <p style="font-size:0.9rem; color:#666;">更多信息请参考 Mochi 语言开发手册 v3.4</p>
+</div>
+
+</div>
+<footer>
+    &copy; 2026 Mochi Language Project. GUI Tutorial.
+</footer>
+
+</body>
+</html>

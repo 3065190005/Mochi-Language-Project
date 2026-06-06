@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi 标准库参考手册</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+            --text: #2d3436;
+            --code-bg: #2d3436;
+            --code-text: #dfe6e9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        header h1 { font-size: 2.2rem; color: var(--primary); }
+        header p { color: #666; }
+        details {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin: 1.2rem 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        summary {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--primary);
+            cursor: pointer;
+            outline: none;
+            padding: 0.5rem 0;
+        }
+        h3 {
+            color: #444;
+            margin: 1rem 0 0.5rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.6rem 1rem;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+        th {
+            background: #f0ebff;
+        }
+        pre {
+            background: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+        code {
+            background: #eee;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📚 Mochi 标准库参考手册</h1>
+    <p>版本 v3.4 · 所有内置标准库的详细函数说明与示例</p>
+</header>
+
+<!-- ==================== fs ==================== -->
+<details open>
+    <summary>📁 fs — 文件系统</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>fs.read(path)</code></td><td>path：文件路径（字符串）</td><td>读取文件全部内容，返回字符串</td></tr>
+        <tr><td><code>fs.write(path, content)</code></td><td>path, content（字符串）</td><td>将内容写入文件（覆盖）</td></tr>
+        <tr><td><code>fs.append(path, content)</code></td><td>path, content</td><td>追加内容到文件末尾</td></tr>
+        <tr><td><code>fs.exists(path)</code></td><td>path</td><td>检查文件或目录是否存在，返回布尔</td></tr>
+        <tr><td><code>fs.remove(path)</code></td><td>path</td><td>删除文件（或空目录）</td></tr>
+        <tr><td><code>fs.listdir(path)</code></td><td>path（可选，默认当前目录）</td><td>列出目录下的文件和子目录名，返回数组</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc fs = import("fs");
+fs.write("test.txt", "Hello Mochi!");
+print(fs.read("test.txt"));  // Hello Mochi!
+fs.append("test.txt", "\n新的一行");
+print(fs.listdir("."));      // ["test.txt", ...]
+fs.remove("test.txt");</code></pre>
+</details>
+
+<!-- ==================== math ==================== -->
+<details open>
+    <summary>📐 math — 数学扩展</summary>
+    <h3>常量</h3>
+    <p><code>math.pi</code> (3.14159...)，<code>math.e</code> (2.71828...)</p>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td>sin, cos, tan</td><td>弧度值</td><td>三角函数</td></tr>
+        <tr><td>sqrt(x)</td><td>数字</td><td>平方根</td></tr>
+        <tr><td>pow(base, exp)</td><td>两个数字</td><td>幂运算</td></tr>
+        <tr><td>log(x), log10(x)</td><td>数字</td><td>自然对数、以10为底对数</td></tr>
+        <tr><td>floor(x), ceil(x)</td><td>数字</td><td>向下/向上取整</td></tr>
+        <tr><td>round(x)</td><td>数字</td><td>四舍五入到整数</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc m = import("math");
+print(m.sqrt(25));       // 5
+print(m.sin(m.pi/2));    // 1.0
+print(m.floor(3.7));     // 3</code></pre>
+</details>
+
+<!-- ==================== json ==================== -->
+<details open>
+    <summary>📦 json — JSON 处理</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>json.encode(value)</code></td><td>任意 Mochi 值</td><td>将值序列化为 JSON 字符串</td></tr>
+        <tr><td><code>json.decode(str)</code></td><td>JSON 字符串</td><td>解析 JSON 字符串为 Mochi 值</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc json = import("json");
+loc obj = {"name":"Mochi","age":3.4};
+loc s = json.encode(obj);        // {"name":"Mochi","age":3.4}
+loc copy = json.decode(s);
+print(copy.name);                // Mochi</code></pre>
+</details>
+
+<!-- ==================== random ==================== -->
+<details open>
+    <summary>🎲 random — 随机数工具</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>random.seed(n?)</code></td><td>种子（数字，可选）</td><td>设置随机种子，无参数时使用硬件随机</td></tr>
+        <tr><td><code>random.random()</code></td><td>无</td><td>返回 [0,1) 浮点数</td></tr>
+        <tr><td><code>random.uniform(a,b)</code></td><td>下限a,上限b</td><td>返回 [a,b) 浮点数</td></tr>
+        <tr><td><code>random.randint(min,max)</code></td><td>两个整数</td><td>返回 [min,max] 整数</td></tr>
+        <tr><td><code>random.choice(array)</code></td><td>数组</td><td>随机返回一个元素</td></tr>
+        <tr><td><code>random.shuffle(array)</code></td><td>数组（原地）</td><td>打乱数组顺序</td></tr>
+        <tr><td><code>random.sample(array,k)</code></td><td>数组,数量k</td><td>无重复抽取k个元素，返回新数组</td></tr>
+        <tr><td><code>random.bytes(n)</code></td><td>字节数</td><td>返回n个随机字节的字符串</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc rnd = import("random");
+rnd.seed(123);
+print(rnd.random());        // 0.xxx
+print(rnd.randint(1,6));    // 1~6
+loc arr = [1,2,3,4,5];
+rnd.shuffle(arr);
+print(arr);</code></pre>
+</details>
+
+<!-- ==================== string ==================== -->
+<details open>
+    <summary>🔤 string — 字符串增强工具</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>string.split(str, delim)</code></td><td>字符串，分隔符</td><td>分割字符串，返回数组</td></tr>
+        <tr><td><code>string.join(array, delim)</code></td><td>数组，分隔符</td><td>用分隔符连接数组元素，返回字符串</td></tr>
+        <tr><td><code>string.trim(str)</code></td><td>字符串</td><td>去除首尾空白字符</td></tr>
+        <tr><td><code>string.startsWith(str, prefix)</code></td><td>字符串，前缀</td><td>判断是否以指定前缀开始</td></tr>
+        <tr><td><code>string.endsWith(str, suffix)</code></td><td>字符串，后缀</td><td>判断是否以指定后缀结束</td></tr>
+        <tr><td><code>string.upper(str)</code></td><td>字符串</td><td>转为大写</td></tr>
+        <tr><td><code>string.lower(str)</code></td><td>字符串</td><td>转为小写</td></tr>
+        <tr><td><code>string.replace(str, from, to)</code></td><td>字符串,查找内容,替换内容</td><td>替换所有匹配项</td></tr>
+        <tr><td><code>string.repeat(str, n)</code></td><td>字符串,次数</td><td>重复字符串n次</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc s = import("string");
+loc parts = s.split("a,b,c", ",");
+print(parts);                    // ["a","b","c"]
+print(s.join(parts, "-"));       // "a-b-c"
+print(s.trim("  hello "));       // "hello"
+print(s.repeat("ha", 3));        // "hahaha"</code></pre>
+</details>
+
+<!-- ==================== array ==================== -->
+<details open>
+    <summary>📊 array — 数组高级操作</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>array.map(arr, fn)</code></td><td>数组,回调函数</td><td>对每个元素调用fn，返回新数组</td></tr>
+        <tr><td><code>array.filter(arr, fn)</code></td><td>数组,回调函数</td><td>返回满足条件的元素组成的新数组</td></tr>
+        <tr><td><code>array.filterInPlace(arr, fn)</code></td><td>数组,回调函数</td><td>原地移除不满足条件的元素</td></tr>
+        <tr><td><code>array.reduce(arr, fn, init?)</code></td><td>数组,累积函数,初值(可选)</td><td>累积计算</td></tr>
+        <tr><td><code>array.find(arr, fn)</code></td><td>数组,回调</td><td>返回第一个满足条件的元素，或nil</td></tr>
+        <tr><td><code>array.every(arr, fn)</code></td><td>数组,回调</td><td>是否所有元素都满足条件</td></tr>
+        <tr><td><code>array.some(arr, fn)</code></td><td>数组,回调</td><td>是否存在满足条件的元素</td></tr>
+        <tr><td><code>array.sort(arr, cmp?)</code></td><td>数组,比较函数(可选)</td><td>原地排序，默认按字符串</td></tr>
+        <tr><td><code>array.reverse(arr)</code></td><td>数组</td><td>原地反转</td></tr>
+        <tr><td><code>array.copy(arr)</code></td><td>数组</td><td>浅拷贝数组</td></tr>
+        <tr><td><code>array.flatten(arr)</code></td><td>数组（含嵌套）</td><td>展平一层嵌套</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc a = import("array");
+loc nums = [1,2,3,4,5];
+loc doubled = a.map(nums, fn(x) { return x*2; });
+loc evens = a.filter(nums, fn(x) { return x%2==0; });
+a.sort(nums, fn(x,y) { return y-x; });  // 降序
+print(nums);</code></pre>
+</details>
+
+<!-- ==================== dict ==================== -->
+<details open>
+    <summary>📖 dict — 字典工具</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>dict.keys(d)</code></td><td>字典</td><td>返回所有键的数组</td></tr>
+        <tr><td><code>dict.values(d)</code></td><td>字典</td><td>返回所有值的数组</td></tr>
+        <tr><td><code>dict.entries(d)</code></td><td>字典</td><td>返回键值对数组 [[key,value],...]</td></tr>
+        <tr><td><code>dict.merge(d1,d2,...)</code></td><td>多个字典</td><td>合并字典（后面的覆盖前面的），返回新字典</td></tr>
+        <tr><td><code>dict.get(d, key, default?)</code></td><td>字典,键,默认值(可选)</td><td>获取值，键不存在返回默认值或nil</td></tr>
+        <tr><td><code>dict.set(d, key, value)</code></td><td>字典,键,值</td><td>设置键值</td></tr>
+        <tr><td><code>dict.has(d, key)</code></td><td>字典,键</td><td>检查键是否存在</td></tr>
+        <tr><td><code>dict.remove(d, key)</code></td><td>字典,键</td><td>移除键值对</td></tr>
+        <tr><td><code>dict.clear(d)</code></td><td>字典</td><td>清空字典</td></tr>
+        <tr><td><code>dict.items(d)</code></td><td>字典</td><td>同 entries</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc d = import("dict");
+loc obj = {"a":1, "b":2};
+print(d.keys(obj));        // ["a","b"]
+print(d.get(obj, "a", 0)); // 1
+d.set(obj, "c", 3);</code></pre>
+</details>
+
+<!-- ==================== utf ==================== -->
+<details open>
+    <summary>🌐 utf — Unicode 辅助</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>utf.len(str)</code></td><td>字符串</td><td>返回 Unicode 字符数（非字节数）</td></tr>
+        <tr><td><code>utf.sub(str, start, count?)</code></td><td>字符串,起始索引,数量(可选)</td><td>按字符截取子串</td></tr>
+        <tr><td><code>utf.charAt(str, index)</code></td><td>字符串,索引</td><td>返回指定索引的字符（字符串）</td></tr>
+        <tr><td><code>utf.codes(str)</code></td><td>字符串</td><td>返回 Unicode 码点数组</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc u = import("utf");
+loc s = "Hello世界";
+print(u.len(s));        // 7
+print(u.sub(s,5,2));    // "世界"
+print(u.charAt(s,5));   // "世"
+print(u.codes("A世"));  // [65, 19990]</code></pre>
+</details>
+
+<!-- ==================== dir ==================== -->
+<details open>
+    <summary>📂 dir — 目录操作</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>dir.mkdir(path)</code></td><td>路径</td><td>创建目录</td></tr>
+        <tr><td><code>dir.rmdir(path)</code></td><td>路径</td><td>删除空目录（失败抛出异常）</td></tr>
+        <tr><td><code>dir.isdir(path)</code></td><td>路径</td><td>判断是否是目录</td></tr>
+        <tr><td><code>dir.cwd()</code></td><td>无</td><td>获取当前工作目录</td></tr>
+        <tr><td><code>dir.chdir(path)</code></td><td>路径</td><td>改变当前工作目录</td></tr>
+        <tr><td><code>dir.walk(path)</code></td><td>路径</td><td>递归遍历目录，返回可迭代对象（每个元素为字典含 path,name,isdir）</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc d = import("dir");
+print(d.cwd());
+d.mkdir("test");
+d.chdir("test");
+for (loc item in d.walk(".")) { print(item.name); }
+d.chdir("..");
+d.rmdir("test");</code></pre>
+</details>
+
+<!-- ==================== socket ==================== -->
+<details open>
+    <summary>🌐 socket — 网络通信 (v3.4)</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>socket.tcp()</code></td><td>无</td><td>创建 TCP 套接字代理</td></tr>
+        <tr><td><code>socket.udp()</code></td><td>无</td><td>创建 UDP 套接字代理</td></tr>
+        <tr><td><code>socket.bind(sock, addr, port)</code></td><td>套接字,地址字符串,端口号</td><td>绑定本地地址</td></tr>
+        <tr><td><code>socket.listen(sock, backlog)</code></td><td>套接字,等待队列长度</td><td>开始监听（仅TCP）</td></tr>
+        <tr><td><code>socket.accept(sock)</code></td><td>套接字</td><td>接受客户端连接，返回新套接字代理</td></tr>
+        <tr><td><code>socket.connect(sock, addr, port)</code></td><td>套接字,地址,端口</td><td>连接到远程服务器</td></tr>
+        <tr><td><code>socket.send(sock, data)</code></td><td>套接字,字符串</td><td>发送数据，返回发送字节数</td></tr>
+        <tr><td><code>socket.recv(sock, maxSize)</code></td><td>套接字,最大字节数</td><td>接收数据（阻塞），连接关闭返回空串</td></tr>
+        <tr><td><code>socket.close(sock)</code></td><td>套接字</td><td>关闭套接字</td></tr>
+        <tr><td><code>socket.select(sockArray, timeout?)</code></td><td>套接字数组,超时秒(可选,-1永久)</td><td>返回可读的套接字数组</td></tr>
+        <tr><td><code>socket.handle(sock)</code></td><td>套接字</td><td>返回底层套接字句柄（数字）</td></tr>
+    </table>
+    <h3>示例（回显服务器）</h3>
+    <pre><code>loc sock = import("socket");
+loc server = sock.tcp();
+sock.bind(server, "0.0.0.0", 8080);
+sock.listen(server, 5);
+loc sockets = [server];
+loc srvH = sock.handle(server);
+while (true) {
+    loc ready = sock.select(sockets, 0.5);
+    for (loc s in ready) {
+        if (sock.handle(s) == srvH) {
+            loc cli = sock.accept(server);
+            sockets.push(cli);
+        } else {
+            loc data = sock.recv(s, 1024);
+            if (data == "") { sock.close(s); ... }
+            else { sock.send(s, "Echo: "+data); }
+        }
+    }
+}</code></pre>
+</details>
+
+<!-- ==================== pack ==================== -->
+<details open>
+    <summary>🧰 pack — 二进制打包与位运算 (v3.4)</summary>
+    <h3>打包/解包</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>pack.pack(fmt, args...)</code></td><td>格式字符串, 值列表</td><td>按格式将值打包为二进制字符串</td></tr>
+        <tr><td><code>pack.unpack(fmt, data)</code></td><td>格式字符串, 二进制字符串</td><td>解包二进制数据，返回数组</td></tr>
+    </table>
+    <h3>位运算</h3>
+    <table>
+        <tr><td><code>pack.bitand(a,b)</code></td><td>两个数字</td><td>按位与</td></tr>
+        <tr><td><code>pack.bitor(a,b)</code></td><td>两个数字</td><td>按位或</td></tr>
+        <tr><td><code>pack.bitnot(a)</code></td><td>数字</td><td>按位非</td></tr>
+        <tr><td><code>pack.bitxor(a,b)</code></td><td>两个数字</td><td>按位异或</td></tr>
+        <tr><td><code>pack.lshift(a,n)</code></td><td>数字,位数</td><td>左移</td></tr>
+        <tr><td><code>pack.rshift(a,n)</code></td><td>数字,位数</td><td>逻辑右移</td></tr>
+        <tr><td><code>pack.arshift(a,n)</code></td><td>数字,位数</td><td>算术右移（保留符号）</td></tr>
+    </table>
+    <h3>进制转换</h3>
+    <table>
+        <tr><td><code>pack.hex(str)</code></td><td>十六进制字符串</td><td>转为数字</td></tr>
+        <tr><td><code>pack.oct(str)</code></td><td>八进制字符串</td><td>转为数字</td></tr>
+        <tr><td><code>pack.bin(str)</code></td><td>二进制字符串</td><td>转为数字</td></tr>
+    </table>
+    <h3>格式字符</h3>
+    <p>字节序前缀：<code>@ = &lt; &gt; !</code>，默认 <code>&gt;</code>（大端）。常用字符：<code>b B h H i I q Q f d s</code>（需带数字如4s）<code>c</code>。</p>
+    <h3>示例</h3>
+    <pre><code>loc pk = import("pack");
+loc bin = pk.pack(">i4s", 1024, "hello");
+loc vals = pk.unpack(">i4s", bin);
+print(pk.bitand(pk.hex("FF"), pk.hex("0F"))); // 15
+print(pk.lshift(1, 3));   // 8
+print(pk.bin("1101"));    // 13</code></pre>
+</details>
+
+<!-- ==================== gui ==================== -->
+<details open>
+    <summary>🖼️ gui — 图形界面库 (v3.4)</summary>
+    <p>详细请阅读<code>mochi_gui.html</code>。</p>
+</details>
+
+<!-- ==================== dialog ==================== -->
+<details open>
+    <summary>💬 dialog — 系统对话框 (v3.4)</summary>
+    <h3>函数列表</h3>
+    <table>
+        <tr><th>函数</th><th>参数</th><th>说明</th></tr>
+        <tr><td><code>dialog.info(title, msg)</code></td><td>标题,消息</td><td>显示信息框</td></tr>
+        <tr><td><code>dialog.warning(title, msg)</code></td><td>标题,消息</td><td>显示警告框</td></tr>
+        <tr><td><code>dialog.error(title, msg)</code></td><td>标题,消息</td><td>显示错误框</td></tr>
+        <tr><td><code>dialog.question(title, msg)</code></td><td>标题,消息</td><td>询问是/否，返回布尔</td></tr>
+        <tr><td><code>dialog.input(title, msg, def?)</code></td><td>标题,提示信息,默认值(可选)</td><td>输入框，返回字符串或nil</td></tr>
+        <tr><td><code>dialog.openFile(title, filters?, multi?)</code></td><td>标题,过滤器字符串,是否多选</td><td>打开文件对话框，返回路径字符串或多选路径数组</td></tr>
+        <tr><td><code>dialog.saveFile(title, filters?)</code></td><td>标题,过滤器</td><td>保存文件对话框，返回路径</td></tr>
+        <tr><td><code>dialog.selectFolder(title, defPath?)</code></td><td>标题,默认路径</td><td>选择文件夹，返回路径</td></tr>
+    </table>
+    <h3>示例</h3>
+    <pre><code>loc dlg = import("dialog");
+dlg.info("提示", "操作完成！");
+loc yes = dlg.question("确认", "是否继续？");
+if (yes) {
+    loc name = dlg.input("用户名", "请输入:");
+    if (name) print("你好，" + name);
+}
+loc file = dlg.openFile("选择文本", "*.txt");
+if (file) print(import("fs").read(file));</code></pre>
+</details>
+
+<footer>
+    <p>&copy; 2026 Mochi Language Project · 标准库参考手册 v3.4</p>
+</footer>
+
+</body>
+</html>
